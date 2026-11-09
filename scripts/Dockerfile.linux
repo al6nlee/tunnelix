@@ -1,0 +1,22 @@
+FROM golang:1.26.6-bookworm AS go
+FROM node:24-bookworm-slim AS node
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+ARG UBUNTU_MIRROR=http://ports.ubuntu.com/ubuntu-ports
+RUN sed -i "s|http://ports.ubuntu.com/ubuntu-ports|${UBUNTU_MIRROR}|g" /etc/apt/sources.list.d/ubuntu.sources
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev openssh-client xvfb xauth dbus-x11 && rm -rf /var/lib/apt/lists/*
+COPY --from=go /usr/local/go /usr/local/go
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+ENV PATH=/usr/local/go/bin:$PATH
+WORKDIR /workspace
+COPY go.mod go.sum ./
+ARG GOPROXY=https://proxy.golang.org,direct
+RUN go mod download
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN npm --prefix frontend ci
+COPY . .
+RUN npm --prefix frontend run build && go build -o bin/tunnelix .
+RUN apt-get update && apt-get install -y --no-install-recommends gnome-keyring && rm -rf /var/lib/apt/lists/*
+CMD ["go", "test", "-race", "-timeout", "10m", "./internal/..."]

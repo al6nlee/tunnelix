@@ -1,0 +1,96 @@
+name: Build and test
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev build-essential pkg-config openssh-client xvfb xauth dbus-x11 gnome-keyring
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+      - name: Build frontend
+        run: npm --prefix frontend run build
+      - name: Frontend formatting
+        run: npm --prefix frontend run format:check
+      - name: Verify Windows OpenSSH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ssh = Get-Command ssh.exe -ErrorAction Stop
+          & $ssh.Source -V
+      - name: Build portable package
+        run: go run scripts/package.go
+      - name: Test core with race detector and real desktop helper
+        shell: bash
+        env:
+          TUNNELIX_SOAK_DURATION: 2m
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            export TUNNELIX_TEST_HELPER="$(pwd -W)/bin/tunnelix.exe"
+          else
+            export TUNNELIX_TEST_HELPER="$PWD/bin/tunnelix"
+          fi
+          go test -race -timeout 10m -json ./internal/... > test-results.json
+      - name: Linux system credential store
+        if: runner.os == 'Linux'
+        run: sh scripts/test-keyring-linux.sh
+      - name: macOS and Windows system credential store
+        if: runner.os != 'Linux'
+        env:
+          TUNNELIX_KEYRING_TEST: '1'
+        run: go test -race -timeout 90s -run TestSystemKeyringRoundTrip -v ./internal/credentials
+      - name: Linux frontend smoke without a tray host
+        if: runner.os == 'Linux'
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GTK_A11Y: none
+        run: dbus-run-session -- xvfb-run -a ./bin/tunnelix --smoke-test
+      - name: macOS frontend smoke
+        if: runner.os == 'macOS'
+        run: ./bin/tunnelix --smoke-test
+      - name: Windows frontend smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath ./bin/tunnelix.exe -ArgumentList '--smoke-test' -Wait -PassThru -RedirectStandardOutput smoke-stdout.log -RedirectStandardError smoke-stderr.log
+          Get-Content smoke-stdout.log, smoke-stderr.log
+          if ($process.ExitCode -ne 0) { throw "Frontend smoke failed: $($process.ExitCode)" }
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            test-results.json
+            smoke-*.log
+      - name: Vet
+        run: go vet ./...
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Tunnelix-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            dist/**/*

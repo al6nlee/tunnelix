@@ -1,0 +1,19 @@
+.DS_Store
+.idea/
+
+# Local development dependencies and build output
+/bin/
+/build/
+/frontend/node_modules/
+/frontend/dist/
+/frontend/*.tsbuildinfo
+
+# Release output and temporary validation files
+/dist/
+/artifacts/
+/release-assets/
+/test-results.json
+/smoke-*.log
+coverage.out
+*.test
+/location/

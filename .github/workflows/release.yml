@@ -1,0 +1,285 @@
+name: Prepare release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Existing version tag to build, without v (e.g. 0.1.0)'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.event_name != 'push' || github.event.deleted == false
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      commit: ${{ steps.version.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve version tag
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            version="${RELEASE_TAG#v}"
+          else
+            version="$INPUT_VERSION"
+          fi
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo 'Expected a stable version tag vX.Y.Z (manual input: X.Y.Z).' >&2
+            exit 1
+          fi
+          tag="v$version"
+          if ! commit="$(git rev-parse --verify "refs/tags/$tag^{commit}")"; then
+            echo "Tag $tag does not exist. Push the version tag before releasing." >&2
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$commit" != "$(git rev-parse HEAD)" ]; then
+            echo 'The tag no longer matches the triggering commit.' >&2
+            exit 1
+          fi
+          printf 'value=%s\ncommit=%s\n' "$version" "$commit" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.commit }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Validate version and notes
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.value }}
+          UPDATE_PUBLIC_KEY: ${{ vars.TUNNELIX_UPDATE_PUBLIC_KEY }}
+        run: |
+          test -n "$UPDATE_PUBLIC_KEY"
+          go run scripts/release-notes.go -version "$RELEASE_VERSION" -out "$RUNNER_TEMP/release-notes.md"
+  build:
+    needs: validate
+    environment: release
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    env:
+      TUNNELIX_VERSION: ${{ needs.validate.outputs.version }}
+      TUNNELIX_UPDATE_PUBLIC_KEY: ${{ vars.TUNNELIX_UPDATE_PUBLIC_KEY }}
+      TUNNELIX_ALLOW_UNSIGNED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.commit }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev build-essential pkg-config openssh-client xvfb xauth dbus-x11 gnome-keyring
+      - name: Windows installer tools
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install nsis --yes --no-progress
+          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          (Get-Command ssh.exe -ErrorAction Stop).Source
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend run format:check
+      - run: npm --prefix frontend run build
+      - name: Build test helper
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            go build -o bin/tunnelix.exe .
+          else
+            go build -o bin/tunnelix .
+          fi
+      - name: Integration tests
+        shell: bash
+        env:
+          TUNNELIX_SOAK_DURATION: 2m
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            export TUNNELIX_TEST_HELPER="$(pwd -W)/bin/tunnelix.exe"
+          else
+            export TUNNELIX_TEST_HELPER="$PWD/bin/tunnelix"
+          fi
+          go test -race -timeout 10m -json ./internal/... > test-results.json
+          go vet ./...
+      - name: Linux credential store
+        if: runner.os == 'Linux'
+        run: sh scripts/test-keyring-linux.sh
+      - name: macOS and Windows credential store
+        if: runner.os != 'Linux'
+        env:
+          TUNNELIX_KEYRING_TEST: '1'
+        run: go test -race -timeout 90s -run TestSystemKeyringRoundTrip ./internal/credentials
+      - name: Prepare macOS signing
+        if: runner.os == 'macOS'
+        env:
+          MAC_CERTIFICATE_BASE64: ${{ secrets.MAC_CERTIFICATE_BASE64 }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          MAC_SIGN_IDENTITY: ${{ vars.MAC_SIGN_IDENTITY }}
+          MAC_NOTARY_KEY_BASE64: ${{ secrets.MAC_NOTARY_KEY_BASE64 }}
+          MAC_NOTARY_KEY_ID: ${{ secrets.MAC_NOTARY_KEY_ID }}
+          MAC_NOTARY_ISSUER: ${{ secrets.MAC_NOTARY_ISSUER }}
+        run: bash .github/scripts/macos-signing.sh
+      - name: Prepare Windows signing
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+        run: |
+          if (-not $env:CERTIFICATE_BASE64) {
+            Write-Host '::notice::No Windows certificate configured; building an unsigned preview.'
+            'TUNNELIX_ALLOW_UNSIGNED=true' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            exit 0
+          }
+          $sdk = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe' | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $sdk) { throw 'Windows SDK signtool is missing' }
+          $sdk.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          $cert = Join-Path $env:RUNNER_TEMP 'tunnelix-signing.pfx'
+          [IO.File]::WriteAllBytes($cert, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+          "TUNNELIX_WINDOWS_CERTIFICATE=$cert" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build release packages
+        shell: bash
+        env:
+          TUNNELIX_UPDATE_PRIVATE_KEY: ${{ secrets.TUNNELIX_UPDATE_PRIVATE_KEY }}
+          TUNNELIX_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          args=(-release)
+          if [ "$TUNNELIX_ALLOW_UNSIGNED" = true ]; then args+=(-allow-unsigned); fi
+          go run scripts/package.go "${args[@]}"
+      - name: Verify release assets
+        shell: bash
+        run: |
+          target="$(go env GOOS)-$(go env GOARCH)"
+          args=(-production)
+          if [ "$TUNNELIX_ALLOW_UNSIGNED" = true ]; then args+=(-allow-unsigned); fi
+          go run scripts/release.go -dir "dist/$TUNNELIX_VERSION/$target" -version "$TUNNELIX_VERSION" "${args[@]}"
+      - name: macOS packaged frontend smoke
+        if: runner.os == 'macOS'
+        run: ./build/darwin-$(go env GOARCH)/Tunnelix.app/Contents/MacOS/Tunnelix --smoke-test
+      - name: Linux packaged frontend smoke
+        if: runner.os == 'Linux'
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: '1'
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GTK_A11Y: none
+        run: dbus-run-session -- xvfb-run -a ./bin/tunnelix --smoke-test
+      - name: Windows packaged frontend smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process ./bin/tunnelix.exe -ArgumentList '--smoke-test' -Wait -PassThru -RedirectStandardOutput smoke-stdout.log -RedirectStandardError smoke-stderr.log
+          Get-Content smoke-stdout.log, smoke-stderr.log
+          if ($p.ExitCode -ne 0) { throw 'Packaged frontend smoke failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-packages-${{ runner.os }}-${{ runner.arch }}
+          path: dist/${{ needs.validate.outputs.version }}/*/*
+          if-no-files-found: error
+      - name: Save validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-validation-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            test-results.json
+            smoke-*.log
+      - name: Remove macOS signing material
+        if: always() && runner.os == 'macOS'
+        run: bash .github/scripts/macos-signing-cleanup.sh
+      - name: Remove Windows signing material
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $cert = Join-Path $env:RUNNER_TEMP 'tunnelix-signing.pfx'
+          if (Test-Path $cert) { Remove-Item -LiteralPath $cert -Force }
+  draft:
+    needs: [validate, build]
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.commit }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-packages-*
+          path: artifacts
+      - name: Collect package files only
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import shutil
+          target = Path('release-assets')
+          target.mkdir()
+          for source in Path('artifacts').rglob('*'):
+              if source.is_symlink():
+                  raise SystemExit('Unexpected artifact symlink')
+              if source.is_file():
+                  destination = target / source.name
+                  if destination.exists():
+                      raise SystemExit('Duplicate release asset: ' + source.name)
+                  shutil.copyfile(source, destination)
+          PYCODE
+      - name: Verify all platforms and render notes
+        env:
+          TUNNELIX_UPDATE_PUBLIC_KEY: ${{ vars.TUNNELIX_UPDATE_PUBLIC_KEY }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: |
+          go run scripts/release.go -dir release-assets -version "$RELEASE_VERSION" -platforms darwin,windows,linux -commit "$RELEASE_COMMIT" -production -allow-unsigned
+          go run scripts/release-notes.go -version "$RELEASE_VERSION" -out "$RUNNER_TEMP/release-notes.md"
+      - name: Determine release type from verified packages
+        id: release_type
+        run: |
+          python3 - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          unsigned = []
+          for path in sorted(Path('release-assets').glob('release-*.json')):
+              manifest = json.loads(path.read_text())
+              platform = manifest['platform']
+              if (platform != 'linux' and not manifest['osSigned']) or (platform == 'darwin' and not manifest['notarized']):
+                  unsigned.append(platform + '-' + manifest['arch'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('prerelease=' + str(bool(unsigned)).lower() + '\n')
+          if unsigned:
+              notes = Path(os.environ['RUNNER_TEMP']) / 'release-notes.md'
+              warning = 'Preview: platform signing / notarization is incomplete for: ' + ', '.join(unsigned) + '. Download and install manually.\n\n预览版：上述平台尚未完成平台签名或公证，需手动下载安装。\n\n'
+              notes.write_text(warning + notes.read_text())
+          PYCODE
+      - name: Create draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_PRERELEASE: ${{ steps.release_type.outputs.prerelease }}
+        run: |
+          if gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo 'This version already exists. Refusing to overwrite its assets.' >&2
+            exit 1
+          fi
+          gh release create "v$RELEASE_VERSION" --draft --prerelease="$RELEASE_PRERELEASE" --verify-tag --title "Tunnelix v$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md" release-assets/*
