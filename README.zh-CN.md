@@ -9,6 +9,8 @@
 轻量的桌面 SSH 隧道管理工具，基于 Go + Wails 3 + React，配置保存在本地。
 支持 Windows、macOS、Linux，以及简体中文和英文。
 
+系统要求：Windows 10 22H2 及以上（x64）、Windows 11（x64）、macOS 14 Sonoma 及以上（Intel 与 Apple Silicon 架构包），以及 Ubuntu 24.04 LTS 或兼容的 Linux 发行版。
+
 **当前为 v0.1.0 开发预览版。** macOS arm64 和 Ubuntu 24.04 arm64 已完成本地构建与集成验证；Windows 目前通过交叉编译和安装器编译，尚未实机验证。
 
 ## 功能

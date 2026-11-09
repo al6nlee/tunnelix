@@ -10,6 +10,8 @@ permissions:
 jobs:
   desktop:
     timeout-minutes: 30
+    env:
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
     strategy:
       fail-fast: false
       matrix:

@@ -2,10 +2,10 @@
 
 ## 环境与运行
 
-需要 Go 1.26.6+、Node.js 24、Git、OpenSSH，以及平台依赖：
+需要 Go 1.26.6+、Node.js 24、Git、OpenSSH，以及平台依赖。产品最低系统版本为 Windows 10 22H2（x64）、macOS 14 Sonoma、Ubuntu 24.04 LTS：
 
-- macOS：Xcode Command Line Tools。
-- Windows：WebView2 Runtime、OpenSSH Client。
+- macOS 14+：Xcode Command Line Tools。
+- Windows 10 22H2+ / Windows 11（x64）：WebView2 Runtime、OpenSSH Client。
 - Ubuntu 24.04：`sudo apt-get install build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev openssh-client`。
 
 在仓库根目录执行：
@@ -76,4 +76,4 @@ Windows 使用 `bin/tunnelix.exe`，通过 PowerShell 的 `$env:TUNNELIX_TEST_HE
 
 截至 2026-11-09：macOS arm64、Ubuntu 24.04 arm64 容器通过构建、race / SSH 集成、系统凭据存取、打包及桌面 smoke；Windows amd64 通过交叉编译和 NSIS 安装器编译。
 
-发布前仍需验证：Windows 实机安装 / 升级 / 卸载与连接；正式签名更新；Linux 实体桌面及 amd64；macOS 14 / Intel；实际休眠唤醒及网络切换。托盘视觉效果和新增网络设置尚未完成完整 GUI 验收。三端 GitHub Actions 尚未远程执行。
+发布前仍需验证：Windows 实机安装 / 升级 / 卸载与连接；正式签名更新；Linux 实体桌面及 amd64；macOS 14 / Intel 实机运行；实际休眠唤醒及网络切换。托盘视觉效果和新增网络设置尚未完成完整 GUI 验收。

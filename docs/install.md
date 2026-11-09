@@ -4,6 +4,14 @@
 
 Current packages are development previews. Choose your OS and architecture; `Tunnelix-update-*.zip` is only for the in-app updater.
 
+## 系统要求 / System requirements
+
+| 系统 / OS | 最低版本 / Minimum | 架构与运行依赖 / Architecture and runtime requirements |
+| --- | --- | --- |
+| Windows | Windows 10 22H2（19045）或 Windows 11 | x64；WebView2 Runtime、OpenSSH Client |
+| macOS | macOS 14 Sonoma | Intel x64 或 Apple Silicon arm64；应用包需匹配架构 |
+| Linux | Ubuntu 24.04 LTS 或兼容发行版 | amd64/arm64；GTK 4、WebKitGTK 6.0、OpenSSH |
+
 ## 安装 / Install
 
 | 系统 / OS | 操作 / Steps |

@@ -29,7 +29,7 @@ The first Tunnelix desktop release, in English and Simplified Chinese.
 
 ### Requirements / 运行要求
 
-- macOS 14+; Windows 10/11 x64 with WebView2 and OpenSSH Client; Ubuntu 24.04-compatible Linux with GTK 4, WebKitGTK 6.0, and OpenSSH.
+- macOS 14 Sonoma+ (Intel or Apple Silicon); Windows 10 22H2+ / Windows 11 x64 with WebView2 and OpenSSH Client; Ubuntu 24.04 LTS-compatible Linux with GTK 4, WebKitGTK 6.0, and OpenSSH.
 - Linux encrypted password storage needs a Secret Service provider.
 - Multi-factor / keyboard-interactive authentication, terminal, SFTP, and OS login startup are not included.
 - The declared minimum systems and physical desktop behaviour still require release qualification; see [platform validation status](docs/development.md#平台验证状态) before publishing.
