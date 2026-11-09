@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, windows-2022, ubuntu-24.04]
+        os: [macos-15, windows-2022, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     env:
       TUNNELIX_VERSION: ${{ needs.validate.outputs.version }}
@@ -179,6 +179,7 @@ jobs:
       - name: Linux packaged frontend smoke
         if: runner.os == 'Linux'
         env:
+          WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: '1'
           WEBKIT_DISABLE_COMPOSITING_MODE: '1'
           LIBGL_ALWAYS_SOFTWARE: '1'
           GTK_A11Y: none
