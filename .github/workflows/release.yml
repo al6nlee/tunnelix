@@ -248,6 +248,12 @@ jobs:
               if source.is_symlink():
                   raise SystemExit('Unexpected artifact symlink')
               if source.is_file():
+                  # Each platform verification creates a local aggregate
+                  # SHA256SUMS. The draft job regenerates one aggregate after
+                  # combining all platform assets, so do not merge these
+                  # duplicate intermediate files.
+                  if source.name == 'SHA256SUMS':
+                      continue
                   destination = target / source.name
                   if destination.exists():
                       raise SystemExit('Duplicate release asset: ' + source.name)
