@@ -175,8 +175,11 @@ jobs:
           if [ "$TUNNELIX_ALLOW_UNSIGNED" = true ]; then args+=(-allow-unsigned); fi
           go run scripts/release.go -dir "dist/$TUNNELIX_VERSION/$target" -version "$TUNNELIX_VERSION" "${args[@]}"
       - name: macOS packaged frontend smoke
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && runner.environment == 'self-hosted'
         run: ./build/darwin-$(go env GOARCH)/Tunnelix.app/Contents/MacOS/Tunnelix --smoke-test
+      - name: macOS hosted runner smoke limitation
+        if: runner.os == 'macOS' && runner.environment != 'self-hosted'
+        run: echo '::notice::Skipped GUI smoke test because GitHub-hosted macOS runners do not provide a reliable interactive WebKit session.'
       - name: Linux packaged frontend smoke
         if: runner.os == 'Linux'
         env:

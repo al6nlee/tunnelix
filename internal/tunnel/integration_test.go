@@ -266,7 +266,14 @@ func harness(t *testing.T, s *sshServer) (*Manager, config.Tunnel, string) {
 	if runtime.GOOS == "windows" {
 		wrapper += ".exe"
 	}
-	if e = os.Link(helper, wrapper); e != nil {
+	// Windows keeps the executable image locked while the test process is
+	// running, so a hard link cannot be removed during TempDir cleanup. Use a
+	// private copy there; Unix can safely use a hard link without duplicating
+	// the test binary.
+	if runtime.GOOS != "windows" {
+		e = os.Link(helper, wrapper)
+	}
+	if e != nil || runtime.GOOS == "windows" {
 		data, err := os.ReadFile(helper)
 		if err != nil {
 			t.Fatal(err)

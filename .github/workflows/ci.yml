@@ -73,8 +73,11 @@ jobs:
           GTK_A11Y: none
         run: dbus-run-session -- xvfb-run -a ./bin/tunnelix --smoke-test
       - name: macOS frontend smoke
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && runner.environment == 'self-hosted'
         run: ./bin/tunnelix --smoke-test
+      - name: macOS hosted runner smoke limitation
+        if: runner.os == 'macOS' && runner.environment != 'self-hosted'
+        run: echo '::notice::Skipped GUI smoke test because GitHub-hosted macOS runners do not provide a reliable interactive WebKit session.'
       - name: Windows frontend smoke
         if: runner.os == 'Windows'
         shell: pwsh
