@@ -178,11 +178,6 @@ export default function App() {
       const next = await call<Snapshot>("Snapshot");
       if (rev === revision.current) {
         setData(next);
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            void desktopCall("FrontendReady").catch(() => {});
-          }),
-        );
       }
     } catch (e) {
       report(e);
@@ -207,6 +202,23 @@ export default function App() {
         : lang,
     );
   }, [data.config.settings.language, i18n]);
+  useEffect(() => {
+    if (!desktop) return;
+    // Signal after React has mounted independently of the initial Snapshot
+    // RPC. A slow configuration read should still surface in the UI without
+    // making the desktop startup smoke test time out.
+    let first = 0;
+    let second = 0;
+    first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        void desktopCall("FrontendReady").catch(() => {});
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, []);
   useEffect(() => {
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
