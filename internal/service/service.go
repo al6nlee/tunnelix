@@ -44,6 +44,44 @@ func New(store *config.Store, manager *tunnel.Manager) (*Service, error) {
 	absolute, _ := filepath.Abs(store.Path())
 	return &Service{store: store, cfg: c, manager: manager, vault: credentials.New(absolute)}, nil
 }
+
+// SelectConfigPath switches the active JSON configuration file during the
+// first-run setup. The selected file is created immediately so the chosen
+// location is explicit even before the first tunnel is saved.
+func (s *Service) SelectConfigPath(path string) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("CONFIG_PATH_REQUIRED")
+	}
+	absolute, e := filepath.Abs(path)
+	if e != nil {
+		return errors.New("INVALID_CONFIG_PATH")
+	}
+	store := config.NewStore(absolute)
+	c, e := store.Load()
+	if e != nil {
+		return e
+	}
+	if _, e = os.Stat(absolute); errors.Is(e, os.ErrNotExist) {
+		if e = store.Save(c); e != nil {
+			return e
+		}
+	} else if e != nil {
+		return e
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, t := range s.cfg.Tunnels {
+		if s.manager.Active(t.ID) {
+			return errors.New("DISCONNECT_TO_EDIT")
+		}
+	}
+	s.store = store
+	s.cfg = c
+	s.vault = credentials.New(absolute)
+	s.revision++
+	go s.notify()
+	return nil
+}
 func (s *Service) notify() {
 	s.mu.Lock()
 	fn := s.OnChange

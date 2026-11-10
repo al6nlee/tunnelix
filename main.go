@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"embed"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -62,6 +63,14 @@ func main() {
 	}
 	smoke := *smokeFlag
 	path, e := config.DefaultPath()
+	explicitConfig := *configFlag != ""
+	if !explicitConfig && !smoke {
+		if remembered, rememberErr := config.RememberedPath(); rememberErr != nil {
+			log.Fatal(rememberErr)
+		} else if remembered != "" {
+			path = remembered
+		}
+	}
 	if *configFlag != "" {
 		path, e = filepath.Abs(*configFlag)
 	}
@@ -74,6 +83,17 @@ func main() {
 	}
 	if e != nil {
 		log.Fatal(e)
+	}
+	needsConfigSelection := false
+	if !smoke && !explicitConfig {
+		_, statErr := os.Stat(path)
+		switch {
+		case statErr == nil:
+		case errors.Is(statErr, os.ErrNotExist):
+			needsConfigSelection = true
+		default:
+			log.Fatal(statErr)
+		}
 	}
 	helper, e := os.Executable()
 	if e != nil {
@@ -145,6 +165,9 @@ func main() {
 	}
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{Title: "Tunnelix", Width: 1060, Height: 720, MinWidth: 900, MinHeight: 600, URL: "/", BackgroundColour: application.NewRGB(246, 248, 252)})
+	if needsConfigSelection {
+		window.Hide()
+	}
 	tray := app.SystemTray.New()
 	if runtime.GOOS == "darwin" {
 		tray.SetTemplateIcon(trayIcon)
@@ -254,6 +277,39 @@ func main() {
 		window.OnWindowEvent(events.Common.WindowClosing, func(*application.WindowEvent) { app.Quit() })
 	}
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		if needsConfigSelection {
+			desktop.updates.SetAutomatic(false)
+			go func() {
+				selected, dialogErr := app.Dialog.SaveFile().
+					SetMessage("Choose where Tunnelix should store its JSON configuration. / 选择 Tunnelix 保存 JSON 配置的位置。").
+					SetFilename("config.json").
+					AddFilter("JSON configuration", "*.json").
+					CanCreateDirectories(true).
+					PromptForSingleSelection()
+				if stopping.Load() {
+					return
+				}
+				if dialogErr != nil || selected == "" {
+					app.Quit()
+					return
+				}
+				if dialogErr = svc.SelectConfigPath(selected); dialogErr != nil {
+					log.Printf("Cannot select Tunnelix configuration: %v", dialogErr)
+					app.Quit()
+					return
+				}
+				if dialogErr = config.RememberPath(selected); dialogErr != nil {
+					log.Printf("Cannot remember Tunnelix configuration path: %v", dialogErr)
+					app.Quit()
+					return
+				}
+				window.Show()
+				window.Focus()
+				desktop.updates.SetAutomatic(automaticAllowed && svc.Snapshot().Config.Settings.AutoUpdate)
+				go svc.AutoConnect()
+			}()
+			return
+		}
 		desktop.updates.SetAutomatic(automaticAllowed && svc.Snapshot().Config.Settings.AutoUpdate)
 		go svc.AutoConnect()
 	})

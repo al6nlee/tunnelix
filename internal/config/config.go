@@ -209,6 +209,51 @@ func DefaultPath() (string, error) {
 	d, e := os.UserConfigDir()
 	return filepath.Join(d, "Tunnelix", "config.json"), e
 }
+
+func selectedPathFile() (string, error) {
+	d, e := os.UserConfigDir()
+	if e != nil {
+		return "", e
+	}
+	return filepath.Join(d, "Tunnelix", ".config-location"), nil
+}
+
+// RememberedPath returns the JSON file selected during first-run setup.
+// The pointer contains no tunnel data or credentials.
+func RememberedPath() (string, error) {
+	path, e := selectedPathFile()
+	if e != nil {
+		return "", e
+	}
+	b, e := os.ReadFile(path)
+	if errors.Is(e, os.ErrNotExist) {
+		return "", nil
+	}
+	if e != nil {
+		return "", e
+	}
+	value := strings.TrimSpace(string(b))
+	if value == "" {
+		return "", nil
+	}
+	return filepath.Abs(value)
+}
+
+// RememberPath persists only the selected configuration file location.
+func RememberPath(path string) error {
+	absolute, e := filepath.Abs(path)
+	if e != nil || strings.TrimSpace(absolute) == "" {
+		return errors.New("INVALID_CONFIG_PATH")
+	}
+	location, e := selectedPathFile()
+	if e != nil {
+		return e
+	}
+	if e = os.MkdirAll(filepath.Dir(location), 0700); e != nil {
+		return e
+	}
+	return os.WriteFile(location, []byte(absolute+"\n"), 0600)
+}
 func (s *Store) Load() (Config, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

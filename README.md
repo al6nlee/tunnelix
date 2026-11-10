@@ -6,7 +6,7 @@ English · [简体中文](README.zh-CN.md)
   <img src="assets/brand/tunnelix-logo.png" width="280" alt="Tunnelix logo">
 </p>
 
-A lightweight desktop SSH tunnel manager built with Go + Wails 3 + React. Configuration stays local.
+A lightweight desktop SSH tunnel manager built with Go + Wails 3 + React. Configuration stays in a local JSON file.
 Supports Windows, macOS, Linux, English, and Simplified Chinese.
 
 Supported systems: Windows 10 22H2 or later (x64), Windows 11 (x64), macOS 14 Sonoma or later (Intel and Apple Silicon builds), and Ubuntu 24.04 LTS or compatible Linux distributions.
@@ -25,7 +25,7 @@ Supported systems: Windows 10 22H2 or later (x64), Windows 11 (x64), macOS 14 So
 
 ## Quick start
 
-See [installation and usage](docs/install.md) for packages and runtime requirements. Create a tunnel, enter server and authentication details, add forwarding rules, test, then save and connect. Verify the host fingerprint on first connection.
+See [installation and usage](docs/install.md) for packages and runtime requirements. Choose the JSON configuration file location, create a tunnel, enter server and authentication details, add forwarding rules, test, then save and connect. Verify the host fingerprint on first connection.
 
 Development requires Go 1.26.6+, Node.js 24, OpenSSH, and platform desktop dependencies. See the [development guide](docs/development.md) (Chinese). Run from the repository root:
 

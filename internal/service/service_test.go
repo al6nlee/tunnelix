@@ -85,6 +85,27 @@ func TestSaveDeleteAndSettingsPersist(t *testing.T) {
 		t.Fatal(got, e)
 	}
 }
+
+func TestSelectConfigPathCreatesAndUsesJSONFile(t *testing.T) {
+	s := newService(t)
+	path := filepath.Join(t.TempDir(), "chosen", "config.json")
+	if e := s.SelectConfigPath(path); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := os.Stat(path); e != nil {
+		t.Fatal("selected configuration was not created", e)
+	}
+	settings := config.Default().Settings
+	settings.Theme = "dark"
+	if e := s.SaveSettings(settings); e != nil {
+		t.Fatal(e)
+	}
+	loaded, e := config.NewStore(path).Load()
+	if e != nil || loaded.Settings.Theme != "dark" {
+		t.Fatalf("selected configuration was not used: %+v %v", loaded.Settings, e)
+	}
+}
+
 func TestPreviewUsesLaunchArgumentsWithoutCredentials(t *testing.T) {
 	s := newService(t)
 	c := testTunnel()

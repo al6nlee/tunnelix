@@ -54,15 +54,19 @@ Local destinations are reached from the SSH server; Remote destinations from you
 
 配置保存在 JSON 中，写入时原子替换。/ Configuration is stored in an atomically replaced JSON file.
 
+首次启动会要求选择配置文件位置；之后 Tunnelix 会记住该位置。也可以用 `--config <绝对路径>` 启动时显式指定配置文件。用于记住路径的 `.config-location` 只包含文件路径，不包含连接或密码。/ On first launch, choose the configuration file location; Tunnelix remembers it afterwards. You can also pass `--config <absolute-path>` to select a file explicitly. The `.config-location` pointer contains only the path, never connections or passwords.
+
+未自定义路径时使用以下默认位置。/ If no custom path is selected, the default locations are:
+
 | 系统 / OS | 路径 / Path |
 | --- | --- |
 | macOS | `~/Library/Application Support/Tunnelix/config.json` |
 | Windows | `%APPDATA%\Tunnelix\config.json` |
 | Linux | `$XDG_CONFIG_HOME/Tunnelix/config.json`，默认 / default `~/.config/Tunnelix/config.json` |
 
-密码可不保存、明文保存或加密保存。加密使用 AES-256-GCM，密钥留在系统安全存储；存储不可用时不会回退到明文。已有密码时留空可保留，选择“不保存”并保存可删除。修改连接身份后清除旧凭据。私钥口令不持久化。
+密码可不保存、明文保存或加密保存。选择明文时，密码和其他设置一起写入所选 JSON；选择加密时，密文写入 JSON，AES-256-GCM 密钥留在系统安全存储。存储不可用时不会回退到明文。已有密码时留空可保留，选择“不保存”并保存可删除。修改连接身份后清除旧凭据。私钥口令不持久化。
 
-Passwords can be session-only, plaintext, or AES-256-GCM encrypted with an OS-stored key. Encryption never falls back to plaintext. Leave the password blank to keep it; select “Do not save” and save to remove it. Changing connection identity clears saved credentials. Key passphrases are not persisted.
+Passwords can be session-only, plaintext, or AES-256-GCM encrypted with an OS-stored key. Plaintext passwords are stored in the selected JSON file with the rest of the configuration; encrypted values stay in JSON while the key remains in the OS credential store. Encryption never falls back to plaintext. Leave the password blank to keep it; select “Do not save” and save to remove it. Changing connection identity clears saved credentials. Key passphrases are not persisted.
 
 迁移时使用导出 / 导入，再输入密码；导出不含凭据。复制加密配置文件不会迁移系统密钥。导入合并隧道、关闭导入项的自动连接；ID 重复时整个导入失败。复制隧道也不复制密码和自动连接。
 

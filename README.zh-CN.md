@@ -6,7 +6,7 @@
   <img src="assets/brand/tunnelix-logo.png" width="280" alt="Tunnelix 标志">
 </p>
 
-轻量的桌面 SSH 隧道管理工具，基于 Go + Wails 3 + React，配置保存在本地。
+轻量的桌面 SSH 隧道管理工具，基于 Go + Wails 3 + React，配置保存在本地 JSON 文件中。
 支持 Windows、macOS、Linux，以及简体中文和英文。
 
 系统要求：Windows 10 22H2 及以上（x64）、Windows 11（x64）、macOS 14 Sonoma 及以上（Intel 与 Apple Silicon 架构包），以及 Ubuntu 24.04 LTS 或兼容的 Linux 发行版。
@@ -25,7 +25,7 @@
 
 ## 快速开始
 
-安装包及运行依赖见[安装与使用](docs/install.md)。首次使用：新建隧道 → 填写服务器与认证信息 → 添加转发规则 → 测试连接 → 保存并连接。首次连接需核对主机指纹。
+安装包及运行依赖见[安装与使用](docs/install.md)。首次使用：先选择 JSON 配置文件位置，再新建隧道 → 填写服务器与认证信息 → 添加转发规则 → 测试连接 → 保存并连接。首次连接需核对主机指纹。
 
 开发需要 Go 1.26.6+、Node.js 24、OpenSSH 和对应平台的桌面依赖，见[开发指南](docs/development.md)。在仓库根目录执行：
 
