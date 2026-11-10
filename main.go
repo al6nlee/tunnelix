@@ -165,9 +165,6 @@ func main() {
 	}
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{Title: "Tunnelix", Width: 1060, Height: 720, MinWidth: 900, MinHeight: 600, URL: "/", BackgroundColour: application.NewRGB(246, 248, 252)})
-	if needsConfigSelection {
-		window.Hide()
-	}
 	tray := app.SystemTray.New()
 	if runtime.GOOS == "darwin" {
 		tray.SetTemplateIcon(trayIcon)
@@ -279,8 +276,15 @@ func main() {
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		if needsConfigSelection {
 			desktop.updates.SetAutomatic(false)
+			window.Show()
+			window.Focus()
 			go func() {
+				// ApplicationStarted is delivered while the platform activation
+				// callback is still finishing on macOS. Give the native window a
+				// turn to become dialog-ready before presenting the save panel.
+				time.Sleep(300 * time.Millisecond)
 				selected, dialogErr := app.Dialog.SaveFile().
+					AttachToWindow(window).
 					SetMessage("Choose where Tunnelix should store its JSON configuration. / 选择 Tunnelix 保存 JSON 配置的位置。").
 					SetFilename("config.json").
 					AddFilter("JSON configuration", "*.json").
