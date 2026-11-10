@@ -189,12 +189,15 @@ jobs:
           GTK_A11Y: none
         run: dbus-run-session -- xvfb-run -a ./bin/tunnelix --smoke-test
       - name: Windows packaged frontend smoke
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.environment == 'self-hosted'
         shell: pwsh
         run: |
           $p = Start-Process ./bin/tunnelix.exe -ArgumentList '--smoke-test' -Wait -PassThru -RedirectStandardOutput smoke-stdout.log -RedirectStandardError smoke-stderr.log
           Get-Content smoke-stdout.log, smoke-stderr.log
           if ($p.ExitCode -ne 0) { throw 'Packaged frontend smoke failed' }
+      - name: Windows hosted runner smoke limitation
+        if: runner.os == 'Windows' && runner.environment != 'self-hosted'
+        run: echo "::notice::Skipped GUI smoke test because GitHub-hosted Windows runners do not provide a reliable interactive WebView2 session."
       - uses: actions/upload-artifact@v4
         with:
           name: release-packages-${{ runner.os }}-${{ runner.arch }}

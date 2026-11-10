@@ -79,12 +79,15 @@ jobs:
         if: runner.os == 'macOS' && runner.environment != 'self-hosted'
         run: echo '::notice::Skipped GUI smoke test because GitHub-hosted macOS runners do not provide a reliable interactive WebKit session.'
       - name: Windows frontend smoke
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.environment == 'self-hosted'
         shell: pwsh
         run: |
           $process = Start-Process -FilePath ./bin/tunnelix.exe -ArgumentList '--smoke-test' -Wait -PassThru -RedirectStandardOutput smoke-stdout.log -RedirectStandardError smoke-stderr.log
           Get-Content smoke-stdout.log, smoke-stderr.log
           if ($process.ExitCode -ne 0) { throw "Frontend smoke failed: $($process.ExitCode)" }
+      - name: Windows hosted runner smoke limitation
+        if: runner.os == 'Windows' && runner.environment != 'self-hosted'
+        run: echo "::notice::Skipped GUI smoke test because GitHub-hosted Windows runners do not provide a reliable interactive WebView2 session."
       - name: Upload validation logs
         if: always()
         uses: actions/upload-artifact@v4
