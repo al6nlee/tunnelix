@@ -120,12 +120,29 @@ export default function App() {
   }, [themePreview, data.config.settings.theme]);
   useEffect(() => {
     if (!desktop) return;
-    const refreshUpdate = () =>
+    let stopped = false;
+    let timer = 0;
+    const refreshUpdate = () => {
+      void desktopCall<UpdateStatus>("UpdateStatus")
+        .then((next) => {
+          if (!stopped) {
+            setUpdate(next);
+            stopped = true;
+            window.clearInterval(timer);
+          }
+        })
+        .catch(() => {});
+    };
+    // Bindings may become available a little after the first React render.
+    // Keep trying until the initial status is received, otherwise the panel
+    // would remain on an empty version forever after a transient startup race.
+    timer = window.setInterval(refreshUpdate, 100);
+    refreshUpdate();
+    const off = Events.On("tunnelix:update", () => {
       void desktopCall<UpdateStatus>("UpdateStatus")
         .then(setUpdate)
         .catch(() => {});
-    refreshUpdate();
-    const off = Events.On("tunnelix:update", refreshUpdate);
+    });
     const settingsOff = Events.On("tunnelix:settings", () => setSettings(true));
     const detailOff = Events.On("tunnelix:detail", (event) => {
       const id = typeof event.data === "string" ? event.data : event.data?.[0];
@@ -140,6 +157,8 @@ export default function App() {
       setFilter("all");
     });
     return () => {
+      stopped = true;
+      window.clearInterval(timer);
       off();
       settingsOff();
       detailOff();
