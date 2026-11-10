@@ -3,6 +3,26 @@
 Versions listed here are prepared release notes, not confirmation of publication.
 这里记录待发布的版本说明，不代表版本已经发布。
 
+## [0.1.1]
+
+### 中文
+
+修复首个预览版使用中的更新和配置初始化问题：
+
+- 修复启动阶段版本状态偶发显示为空、无法检查更新的问题。
+- 首次启动选择 JSON 配置文件位置，后续启动自动使用该位置。
+- 明文密码与连接配置一起保存到所选 JSON；加密密码继续使用系统安全存储保护密钥。
+- 修复跨平台 CI、发布产物汇总和测试环境兼容性问题。
+
+### English
+
+Fixes for update checks and configuration initialization in the first preview release:
+
+- Retry the initial update status call so the current version is always shown.
+- Choose the JSON configuration file location on first launch and remember it afterwards.
+- Store plaintext passwords with the selected JSON configuration; encrypted passwords keep their key in the OS credential store.
+- Fix cross-platform CI, release asset aggregation, and test-environment compatibility issues.
+
 ## [0.1.0]
 
 ### 中文

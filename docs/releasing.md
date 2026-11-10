@@ -10,7 +10,7 @@
 npm --prefix frontend ci
 npm --prefix frontend run build
 go run scripts/package.go
-go run scripts/release.go -dir dist/0.1.0/darwin-arm64 -version 0.1.0
+go run scripts/release.go -dir dist/0.1.1/darwin-arm64 -version 0.1.1
 ```
 
 按实际版本、系统和架构修改校验目录。默认版本位于 `internal/buildinfo/info.go`，可用环境变量 `TUNNELIX_VERSION=X.Y.Z` 覆盖。
