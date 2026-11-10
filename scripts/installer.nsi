@@ -30,7 +30,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright (c) 2026 Alan"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\tunnelix.exe"
 !define MUI_FINISHPAGE_RUN_NOTCHECKED
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "${PACKAGE_DIR}/LICENSE"
+!insertmacro MUI_PAGE_LICENSE "${PACKAGE_DIR}\LICENSE"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -60,18 +60,18 @@ FunctionEnd
 Section "Tunnelix"
   SetOutPath "$INSTDIR"
   SetOverwrite on
-  File "${PACKAGE_DIR}/tunnelix.exe"
-  File "${PACKAGE_DIR}/LICENSE"
-  File "${PACKAGE_DIR}/THIRD_PARTY_LICENSES.txt"
-  File "${PACKAGE_DIR}/THIRD_PARTY_NOTICES.md"
-  File "${PACKAGE_DIR}/README.md"
-  File "${PACKAGE_DIR}/README.zh-CN.md"
-  File "${PACKAGE_DIR}/tunnelix.png"
-  File "${PACKAGE_DIR}/tunnelix.ico"
+  File "${PACKAGE_DIR}\tunnelix.exe"
+  File "${PACKAGE_DIR}\LICENSE"
+  File "${PACKAGE_DIR}\THIRD_PARTY_LICENSES.txt"
+  File "${PACKAGE_DIR}\THIRD_PARTY_NOTICES.md"
+  File "${PACKAGE_DIR}\README.md"
+  File "${PACKAGE_DIR}\README.zh-CN.md"
+  File "${PACKAGE_DIR}\tunnelix.png"
+  File "${PACKAGE_DIR}\tunnelix.ico"
   SetOutPath "$INSTDIR\docs"
-  File "${PACKAGE_DIR}/docs/install.md"
-  File "${PACKAGE_DIR}/docs/development.md"
-  File "${PACKAGE_DIR}/docs/releasing.md"
+  File "${PACKAGE_DIR}\docs\install.md"
+  File "${PACKAGE_DIR}\docs\development.md"
+  File "${PACKAGE_DIR}\docs\releasing.md"
   SetOutPath "$INSTDIR"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\Tunnelix"

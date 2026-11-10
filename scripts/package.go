@@ -207,12 +207,6 @@ func main() {
 				must(err)
 				iconAbs, err := filepath.Abs(icon)
 				must(err)
-				// NSIS accepts forward-slash paths consistently on Windows. Mixing
-				// Go's backslashes with the slash used by the NSIS script can make
-				// File resolve to a path that does not exist on hosted runners.
-				rootAbs = filepath.ToSlash(rootAbs)
-				outputAbs = filepath.ToSlash(outputAbs)
-				iconAbs = filepath.ToSlash(iconAbs)
 				args := []string{"/DPRODUCT_VERSION=" + version, "/DPACKAGE_DIR=" + rootAbs, "/DOUTPUT_FILE=" + outputAbs, "/DICON_FILE=" + iconAbs}
 				if osSigned {
 					script, err := filepath.Abs("scripts/sign-windows.ps1")

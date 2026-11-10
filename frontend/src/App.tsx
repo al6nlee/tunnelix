@@ -204,19 +204,25 @@ export default function App() {
   }, [data.config.settings.language, i18n]);
   useEffect(() => {
     if (!desktop) return;
-    // Signal after React has mounted independently of the initial Snapshot
-    // RPC. A slow configuration read should still surface in the UI without
-    // making the desktop startup smoke test time out.
-    let first = 0;
-    let second = 0;
-    first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(() => {
-        void desktopCall("FrontendReady").catch(() => {});
-      });
-    });
+    // The Wails runtime can become callable shortly after React mounts. Retry
+    // briefly so headless/slow hosted runners do not lose the one ready call.
+    let stopped = false;
+    let timer = 0;
+    const notify = () => {
+      void desktopCall("FrontendReady")
+        .then(() => {
+          stopped = true;
+          window.clearInterval(timer);
+        })
+        .catch(() => {});
+    };
+    timer = window.setInterval(() => {
+      if (!stopped) notify();
+    }, 100);
+    notify();
     return () => {
-      cancelAnimationFrame(first);
-      cancelAnimationFrame(second);
+      stopped = true;
+      window.clearInterval(timer);
     };
   }, []);
   useEffect(() => {
