@@ -1,4 +1,5 @@
 import { Call, Events, System } from "@wailsio/runtime";
+import { isPackagedDesktop } from "./desktop";
 export type CredentialUpdate = {
   mode: "keep" | "none" | "plain" | "encrypted";
   value: string;
@@ -68,7 +69,7 @@ export type Snapshot = {
   sshAvailable: boolean;
   sshPath: string;
 };
-export const desktop = System.IsMac() || System.IsWindows() || System.IsLinux();
+export const desktop = isPackagedDesktop(window.location) || System.IsDesktop();
 export function call<T = void>(method: string, ...args: unknown[]): Promise<T> {
   if (!desktop) return Promise.reject(new Error("DESKTOP_REQUIRED"));
   return Call.ByName(`tunnelix/internal/service.Service.${method}`, ...args);

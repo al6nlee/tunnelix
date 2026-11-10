@@ -11,7 +11,7 @@
 
 系统要求：Windows 10 22H2 及以上（x64）、Windows 11（x64）、macOS 14 Sonoma 及以上（Intel 与 Apple Silicon 架构包），以及 Ubuntu 24.04 LTS 或兼容的 Linux 发行版。
 
-**当前为 v0.1.1 开发预览版。** macOS arm64 和 Ubuntu 24.04 arm64 已完成本地构建与集成验证；Windows 目前通过交叉编译和安装器编译，尚未实机验证。
+**当前为 v0.1.2 开发预览版。** macOS arm64 和 Ubuntu 24.04 arm64 已完成本地构建与集成验证；Windows 目前通过交叉编译和安装器编译，尚未实机验证。
 
 ## 功能
 

@@ -3,6 +3,18 @@
 Versions listed here are prepared release notes, not confirmation of publication.
 这里记录待发布的版本说明，不代表版本已经发布。
 
+## [0.1.2]
+
+### 中文
+
+- 修复 macOS、Windows 和 Linux 打包应用被误判为浏览器预览的问题。
+- 恢复连接列表、SSH 操作和版本更新检查等桌面功能。
+
+### English
+
+- Fix packaged macOS, Windows, and Linux apps being detected as browser previews.
+- Restore desktop connection management, SSH actions, and update checks.
+
 ## [0.1.1]
 
 ### 中文

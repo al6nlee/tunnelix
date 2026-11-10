@@ -35,6 +35,8 @@ jobs:
         run: npm --prefix frontend ci
       - name: Build frontend
         run: npm --prefix frontend run build
+      - name: Frontend regression tests
+        run: npm --prefix frontend test
       - name: Frontend formatting
         run: npm --prefix frontend run format:check
       - name: Verify Windows OpenSSH

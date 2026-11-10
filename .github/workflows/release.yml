@@ -102,6 +102,7 @@ jobs:
           (Get-Command ssh.exe -ErrorAction Stop).Source
       - run: npm --prefix frontend ci
       - run: npm --prefix frontend run format:check
+      - run: npm --prefix frontend test
       - run: npm --prefix frontend run build
       - name: Build test helper
         shell: bash

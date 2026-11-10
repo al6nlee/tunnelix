@@ -11,7 +11,7 @@ Supports Windows, macOS, Linux, English, and Simplified Chinese.
 
 Supported systems: Windows 10 22H2 or later (x64), Windows 11 (x64), macOS 14 Sonoma or later (Intel and Apple Silicon builds), and Ubuntu 24.04 LTS or compatible Linux distributions.
 
-**Currently a v0.1.1 development preview.** Local builds and integration checks have passed on macOS arm64 and Ubuntu 24.04 arm64. Windows has passed cross-compilation and installer compilation; runtime validation is pending.
+**Currently a v0.1.2 development preview.** Local builds and integration checks have passed on macOS arm64 and Ubuntu 24.04 arm64. Windows has passed cross-compilation and installer compilation; runtime validation is pending.
 
 ## Features
 
