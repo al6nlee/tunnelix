@@ -268,11 +268,10 @@ jobs:
         run: |
           go run scripts/release.go -dir release-assets -version "$RELEASE_VERSION" -platforms darwin,windows,linux -commit "$RELEASE_COMMIT" -production -allow-unsigned
           go run scripts/release-notes.go -version "$RELEASE_VERSION" -out "$RUNNER_TEMP/release-notes.md"
-      - name: Determine release type from verified packages
-        id: release_type
+      - name: Annotate unsigned packages
         run: |
           python3 - <<'PYCODE'
-          import json, os
+          import json
           from pathlib import Path
           unsigned = []
           for path in sorted(Path('release-assets').glob('release-*.json')):
@@ -280,9 +279,8 @@ jobs:
               platform = manifest['platform']
               if (platform != 'linux' and not manifest['osSigned']) or (platform == 'darwin' and not manifest['notarized']):
                   unsigned.append(platform + '-' + manifest['arch'])
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('prerelease=' + str(bool(unsigned)).lower() + '\n')
           if unsigned:
+              import os
               notes = Path(os.environ['RUNNER_TEMP']) / 'release-notes.md'
               warning = 'Preview: platform signing / notarization is incomplete for: ' + ', '.join(unsigned) + '. Download and install manually.\n\n预览版：上述平台尚未完成平台签名或公证，需手动下载安装。\n\n'
               notes.write_text(warning + notes.read_text())
@@ -291,10 +289,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
-          RELEASE_PRERELEASE: ${{ steps.release_type.outputs.prerelease }}
         run: |
           if gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
             echo 'This version already exists. Refusing to overwrite its assets.' >&2
             exit 1
           fi
-          gh release create "v$RELEASE_VERSION" --prerelease="$RELEASE_PRERELEASE" --verify-tag --title "Tunnelix v$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md" release-assets/*
+          gh release create "v$RELEASE_VERSION" --verify-tag --title "Tunnelix v$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md" release-assets/*
