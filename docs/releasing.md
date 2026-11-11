@@ -40,7 +40,7 @@ go run scripts/release.go -dir dist/0.1.1/darwin-arm64 -version 0.1.1
 | Windows PFX 未配置 | 未签名预览包 |
 | Windows PFX 已配置 | 使用证书签名；PFX 有密码时须同时提供密码 |
 
-任一平台缺少签名 / 公证时，草稿自动标记为 **Prerelease** 并注明平台；发布后需手动下载安装，应用自动更新会跳过。全部齐全时生成稳定版草稿。证书已配置但无效、密码错误或公证失败仍会报错，不会掩盖配置问题。
+任一平台缺少签名 / 公证时，仍会创建公开 Release，并在说明中注明受影响平台；用户可能需要手动确认安装。全部齐全时生成受系统信任的正式包。证书已配置但无效、密码错误或公证失败仍会报错，不会掩盖配置问题。
 
 ### 1. 生成更新密钥（只做一次）
 
@@ -64,7 +64,7 @@ go run scripts/update-keygen.go /absolute/secure/location/tunnelix-update.key
 
 需要包含证书及私钥的 `.pfx` 文件，以及它的导出密码。**当前脚本只支持 PFX 文件签名**；证书若由硬件令牌、HSM 或云签名服务保管私钥，需先适配签名脚本，不能用只含公钥的 `.cer` 代替。申请前先确认签名方式是否兼容。
 
-## GitHub Draft Release：配置一次，以后推 Tag
+## GitHub Release：配置一次，以后推 Tag
 
 ### 1. 填写 Variables 和 Secrets
 
@@ -108,17 +108,17 @@ python3 -c 'import base64,pathlib,sys; print(base64.b64encode(pathlib.Path(sys.a
    git push origin v0.1.1
    ```
 
-3. 在 **Actions → Prepare release** 查看结果：三端测试 → 按证书配置打包 → 汇总校验 → 创建 **Draft Release**。
-4. 在 **Releases** 中打开草稿，下载验证安装包，确认后点击 **Publish release**。发布前，应用内更新不会发现这个版本。
+3. 在 **Actions → Prepare release** 查看结果：三端测试 → 按证书配置打包 → 汇总校验 → 创建公开 **Release**。
+4. 在 **Releases** 中下载并验证安装包。工作流完成后，应用内更新即可发现该版本。
 
 | 输入 / 设置 | 允许的值 |
 | --- | --- |
 | Git Tag | `vX.Y.Z`，例如 `v0.1.1`；不支持 `v1`、`v01.0.0` 或 `v0.1.1-beta.1` |
 | 手动 Run workflow 的 `version` | `X.Y.Z`，例如 `0.1.1`；不带 `v`，对应 Tag 必须已存在 |
-| 草稿 / 预发布 | 始终生成草稿；平台签名 / 公证不齐时自动标记 Prerelease，无需填写开关 |
+| Release 类型 | 始终创建公开 Release；平台签名 / 公证不齐时在说明中标注，仍需用户按系统提示确认安装 |
 | 构建平台 | 当前固定 Windows、macOS、Linux；各 runner 的原生架构，暂无平台选择参数 |
 
-失败时可在 Actions 重跑，或手动输入同一版本号。构建始终固定到该 Tag 的提交，已有同名 Release（含草稿）时拒绝覆盖。普通分支推送 / PR 只运行 CI 并上传 Artifacts，不创建 Release。
+失败时可在 Actions 重跑，或手动输入同一版本号。构建始终固定到该 Tag 的提交，已有同名 Release 时拒绝覆盖。普通分支推送 / PR 只运行 CI 并上传 Artifacts，不创建 Release。
 
 ## 可选：在本机做正式签名
 

@@ -41,7 +41,7 @@ go run .
 go run scripts/package.go
 ```
 
-输出到 `dist/<版本>/<系统>-<架构>/`。正式签名、版本更新和 GitHub Draft Release 操作见[发布指南](docs/releasing.md)。
+输出到 `dist/<版本>/<系统>-<架构>/`。正式签名、版本更新和 GitHub Release 操作见[发布指南](docs/releasing.md)。
 
 ## 使用边界
 

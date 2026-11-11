@@ -221,7 +221,7 @@ jobs:
         run: |
           $cert = Join-Path $env:RUNNER_TEMP 'tunnelix-signing.pfx'
           if (Test-Path $cert) { Remove-Item -LiteralPath $cert -Force }
-  draft:
+  publish:
     needs: [validate, build]
     runs-on: ubuntu-24.04
     environment: release
@@ -250,7 +250,7 @@ jobs:
                   raise SystemExit('Unexpected artifact symlink')
               if source.is_file():
                   # Each platform verification creates a local aggregate
-                  # SHA256SUMS. The draft job regenerates one aggregate after
+                  # SHA256SUMS. The publish job regenerates one aggregate after
                   # combining all platform assets, so do not merge these
                   # duplicate intermediate files.
                   if source.name == 'SHA256SUMS':

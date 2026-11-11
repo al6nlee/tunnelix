@@ -41,7 +41,7 @@ Build a native package:
 go run scripts/package.go
 ```
 
-Output goes to `dist/<version>/<os>-<arch>/`. See the [release guide](docs/releasing.md) (Chinese) for signing, update distribution, and GitHub Draft Releases.
+Output goes to `dist/<version>/<os>-<arch>/`. See the [release guide](docs/releasing.md) (Chinese) for signing, update distribution, and GitHub Releases.
 
 ## Scope
 
