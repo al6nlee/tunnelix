@@ -3,6 +3,18 @@
 Versions listed here are prepared release notes, not confirmation of publication.
 这里记录待发布的版本说明，不代表版本已经发布。
 
+## [0.2.0]
+
+### 中文
+
+- 发布工作流直接创建公开 Release，不再停留在 Draft 状态。
+- 配置文件路径管理、迁移和切换功能进入 0.2.0 版本。
+
+### English
+
+- Publish releases directly from the release workflow instead of leaving them as drafts.
+- Include configuration path management, relocation, and switching in v0.2.0.
+
 ## [0.1.3]
 
 ### 中文

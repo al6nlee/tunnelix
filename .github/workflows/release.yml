@@ -287,7 +287,7 @@ jobs:
               warning = 'Preview: platform signing / notarization is incomplete for: ' + ', '.join(unsigned) + '. Download and install manually.\n\n预览版：上述平台尚未完成平台签名或公证，需手动下载安装。\n\n'
               notes.write_text(warning + notes.read_text())
           PYCODE
-      - name: Create draft only
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
@@ -297,4 +297,4 @@ jobs:
             echo 'This version already exists. Refusing to overwrite its assets.' >&2
             exit 1
           fi
-          gh release create "v$RELEASE_VERSION" --draft --prerelease="$RELEASE_PRERELEASE" --verify-tag --title "Tunnelix v$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md" release-assets/*
+          gh release create "v$RELEASE_VERSION" --prerelease="$RELEASE_PRERELEASE" --verify-tag --title "Tunnelix v$RELEASE_VERSION" --notes-file "$RUNNER_TEMP/release-notes.md" release-assets/*
