@@ -3,6 +3,18 @@
 Versions listed here are prepared release notes, not confirmation of publication.
 这里记录待发布的版本说明，不代表版本已经发布。
 
+## [0.2.1]
+
+### 中文
+
+- 修正发布流程，直接创建公开稳定 Release，避免更新检查忽略 prerelease。
+- 继续保留未签名平台的明确安装提示。
+
+### English
+
+- Publish a public stable Release directly so update checks do not ignore it as a prerelease.
+- Keep explicit installation notices for platforms without OS signing.
+
 ## [0.2.0]
 
 ### 中文
