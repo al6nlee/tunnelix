@@ -23,6 +23,8 @@ import (
 
 const MaxArtifactSize int64 = 256 << 20
 
+const githubAPIBase = "https://api.github.com"
+
 var versionPattern = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
 
 func ValidVersion(v string) bool {
@@ -122,13 +124,25 @@ func (p *Provider) get(ctx context.Context, address string, max int64) ([]byte, 
 }
 func (p *Provider) Check(ctx context.Context, req updater.CheckRequest) (*updater.Release, error) {
 	data, status, e := p.get(ctx, p.BaseURL+"/repos/"+buildinfo.Repository+"/releases/latest", 2<<20)
+	fallback := false
+	if p.BaseURL == githubAPIBase && (e != nil || status != http.StatusOK) {
+		// GitHub's unauthenticated REST API is limited per source IP. The
+		// public /releases/latest redirect is not subject to that API quota.
+		version, fallbackErr := p.latestVersionFromWeb(ctx)
+		if fallbackErr != nil {
+			return nil, fallbackErr
+		}
+		data, e = json.Marshal(map[string]string{"tag_name": "v" + version})
+		status = http.StatusOK
+		fallback = true
+	}
 	if e != nil {
 		return nil, errors.New("UPDATE_CHECK_FAILED")
 	}
-	if status == 404 {
+	if status == http.StatusNotFound {
 		return nil, errors.New("UPDATE_NO_RELEASE")
 	}
-	if status != 200 {
+	if status != http.StatusOK {
 		return nil, errors.New("UPDATE_CHECK_FAILED")
 	}
 	var release struct {
@@ -160,6 +174,10 @@ func (p *Provider) Check(ctx context.Context, req updater.CheckRequest) (*update
 		urls[asset.Name] = asset.URL
 	}
 	artifactURL, manifestURL := urls[filename], urls[filename+".update.json"]
+	if fallback {
+		artifactURL = fmt.Sprintf("https://github.com/%s/releases/download/v%s/%s", buildinfo.Repository, version, filename)
+		manifestURL = artifactURL + ".update.json"
+	}
 	if !p.allowed(artifactURL) || !p.allowed(manifestURL) {
 		return nil, errors.New("UPDATE_ASSET_MISSING")
 	}
@@ -181,6 +199,50 @@ func (p *Provider) Check(ctx context.Context, req updater.CheckRequest) (*update
 	}
 	return &updater.Release{Version: version, Notes: release.Notes, Artifact: updater.Artifact{Filename: filename, Filetype: "zip", Size: manifest.Size, Platform: req.Platform, Arch: req.Arch}, Verification: &updater.Verification{DigestAlgo: "sha256", Digest: digest, SignatureAlgo: "ed25519", Signature: manifest.ArtifactSignature}, Metadata: map[string]any{"url": artifactURL}}, nil
 }
+
+func (p *Provider) latestVersionFromWeb(ctx context.Context) (string, error) {
+	request, e := http.NewRequestWithContext(ctx, http.MethodGet, "https://github.com/"+buildinfo.Repository+"/releases/latest", nil)
+	if e != nil {
+		return "", errors.New("UPDATE_CHECK_FAILED")
+	}
+	request.Header.Set("User-Agent", "Tunnelix/"+buildinfo.Version)
+	client := &http.Client{Timeout: p.Client.Timeout, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+	response, e := client.Do(request)
+	if e != nil {
+		return "", errors.New("UPDATE_CHECK_FAILED")
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusNotFound {
+		return "", errors.New("UPDATE_NO_RELEASE")
+	}
+	if response.StatusCode < http.StatusMultipleChoices || response.StatusCode >= http.StatusBadRequest {
+		return "", errors.New("UPDATE_CHECK_FAILED")
+	}
+	version, ok := versionFromReleaseLocation(response.Header.Get("Location"))
+	if !ok {
+		return "", errors.New("UPDATE_CHECK_FAILED")
+	}
+	return version, nil
+}
+
+func versionFromReleaseLocation(location string) (string, bool) {
+	u, e := url.Parse(location)
+	if e != nil || u.Scheme != "https" || u.Host != "github.com" || u.User != nil {
+		return "", false
+	}
+	prefix := "/" + buildinfo.Repository + "/releases/tag/"
+	if !strings.HasPrefix(u.Path, prefix) {
+		return "", false
+	}
+	version := strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(u.Path, prefix), "/"), "v")
+	if !ValidVersion(version) {
+		return "", false
+	}
+	return version, true
+}
+
 func (p *Provider) allowed(address string) bool {
 	u, e := url.Parse(address)
 	if e != nil {

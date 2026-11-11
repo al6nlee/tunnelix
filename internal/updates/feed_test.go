@@ -119,6 +119,27 @@ func TestOldReleaseAndInvalidVersion(t *testing.T) {
 		t.Fatal("version order")
 	}
 }
+
+func TestVersionFromReleaseLocation(t *testing.T) {
+	for _, tc := range []struct {
+		location string
+		version  string
+		valid    bool
+	}{
+		{"https://github.com/al6nlee/tunnelix/releases/tag/v0.2.1", "0.2.1", true},
+		{"https://github.com/al6nlee/tunnelix/releases/tag/0.2.1/", "0.2.1", true},
+		{"https://example.com/al6nlee/tunnelix/releases/tag/v0.2.1", "", false},
+		{"https://github.com/al6nlee/tunnelix/releases/tag/v0.2.1-beta.1", "", false},
+	} {
+		t.Run(tc.location, func(t *testing.T) {
+			version, valid := versionFromReleaseLocation(tc.location)
+			if version != tc.version || valid != tc.valid {
+				t.Fatalf("got %q, %v; want %q, %v", version, valid, tc.version, tc.valid)
+			}
+		})
+	}
+}
+
 func TestDownloadSizeMismatch(t *testing.T) {
 	for _, extra := range []bool{true, false} {
 		f := newFixture(t)

@@ -3,6 +3,18 @@
 Versions listed here are prepared release notes, not confirmation of publication.
 这里记录待发布的版本说明，不代表版本已经发布。
 
+## [0.2.2]
+
+### 中文
+
+- 修复 GitHub API 匿名请求触发限流时，版本检查误报失败的问题。
+- API 不可用时通过公开 Release 重定向获取版本，并继续校验更新清单与文件签名。
+
+### English
+
+- Fix update checks failing when GitHub anonymous API requests are rate limited.
+- Fall back to the public Release redirect while continuing to verify the update manifest and artifact signature.
+
 ## [0.2.1]
 
 ### 中文
