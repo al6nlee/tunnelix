@@ -61,6 +61,7 @@ export type Challenge = {
   prompt: string;
 };
 export type Snapshot = {
+  configPath: string;
   credentials: Record<string, CredentialInfo>;
   tests: Status[];
   config: Config;
@@ -82,6 +83,7 @@ export function subscribe(fn: () => void) {
   return Events.On("tunnelix:changed", fn);
 }
 export const emptySnapshot: Snapshot = {
+  configPath: "",
   credentials: {},
   tests: [],
   config: {

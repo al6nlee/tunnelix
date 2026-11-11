@@ -249,10 +249,7 @@ func RememberPath(path string) error {
 	if e != nil {
 		return e
 	}
-	if e = os.MkdirAll(filepath.Dir(location), 0700); e != nil {
-		return e
-	}
-	return os.WriteFile(location, []byte(absolute+"\n"), 0600)
+	return writeFile(location, []byte(absolute+"\n"))
 }
 func (s *Store) Load() (Config, error) {
 	s.mu.Lock()
@@ -276,15 +273,53 @@ func (s *Store) Save(c Config) error {
 	if e != nil {
 		return e
 	}
+	return writeFile(s.path, append(b, '\n'))
+}
+
+// Create refuses to replace an existing file, including an existing symlink.
+func (s *Store) Create(c Config) (result error) {
+	if e := Validate(c); e != nil {
+		return e
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	b, e := json.MarshalIndent(c, "", "  ")
+	if e != nil {
+		return e
+	}
 	if e = os.MkdirAll(filepath.Dir(s.path), 0700); e != nil {
 		return e
 	}
-	f, e := os.CreateTemp(filepath.Dir(s.path), ".config-*")
+	f, e := os.OpenFile(s.path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if e != nil {
+		return e
+	}
+	defer func() {
+		if result != nil {
+			os.Remove(s.path)
+		}
+	}()
+	if _, e = f.Write(append(b, '\n')); e != nil {
+		f.Close()
+		return e
+	}
+	if e = f.Sync(); e != nil {
+		f.Close()
+		return e
+	}
+	return f.Close()
+}
+
+func writeFile(path string, data []byte) error {
+	if e := os.MkdirAll(filepath.Dir(path), 0700); e != nil {
+		return e
+	}
+	f, e := os.CreateTemp(filepath.Dir(path), ".config-*")
 	if e != nil {
 		return e
 	}
 	defer os.Remove(f.Name())
-	if _, e = f.Write(append(b, '\n')); e != nil {
+	if _, e = f.Write(data); e != nil {
 		f.Close()
 		return e
 	}
@@ -295,5 +330,5 @@ func (s *Store) Save(c Config) error {
 	if e = f.Close(); e != nil {
 		return e
 	}
-	return replace(f.Name(), s.path)
+	return replace(f.Name(), path)
 }

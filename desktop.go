@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"path/filepath"
 	"tunnelix/internal/config"
 	"tunnelix/internal/service"
 	"tunnelix/internal/tunnel"
@@ -13,6 +14,7 @@ type Desktop struct {
 	updates       *updates.Controller
 	frontendReady func()
 	app           *application.App
+	window        *application.WebviewWindow
 	service       *service.Service
 }
 
@@ -25,6 +27,29 @@ func (d *Desktop) ExportFile() error {
 		return e
 	}
 	return config.NewStore(path).Save(d.service.Snapshot().Config)
+}
+
+func (d *Desktop) RelocateConfig() (bool, error) {
+	current := d.service.Snapshot().ConfigPath
+	path, e := d.app.Dialog.SaveFile().AttachToWindow(d.window).
+		SetMessage("Save the current configuration to a new location. The original is kept. / 将当前配置保存到新位置，保留原文件。").
+		SetDirectory(filepath.Dir(current)).SetFilename(filepath.Base(current)).
+		AddFilter("JSON configuration", "*.json").CanCreateDirectories(true).PromptForSingleSelection()
+	if e != nil || path == "" {
+		return false, e
+	}
+	return true, d.service.ChangeConfigPath(path, true)
+}
+
+func (d *Desktop) SwitchConfig() (bool, error) {
+	path, e := d.app.Dialog.OpenFile().AttachToWindow(d.window).
+		SetMessage("Use an existing configuration. Connections will not start automatically. / 使用已有配置，不会立即自动连接。").
+		SetDirectory(filepath.Dir(d.service.Snapshot().ConfigPath)).
+		AddFilter("JSON configuration", "*.json").PromptForSingleSelection()
+	if e != nil || path == "" {
+		return false, e
+	}
+	return true, d.service.ChangeConfigPath(path, false)
 }
 
 // FrontendReady acknowledges a successful React render and Go binding round trip.

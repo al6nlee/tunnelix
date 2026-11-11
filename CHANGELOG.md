@@ -3,6 +3,22 @@
 Versions listed here are prepared release notes, not confirmation of publication.
 这里记录待发布的版本说明，不代表版本已经发布。
 
+## [0.1.3]
+
+### 中文
+
+- 在设置中查看并修改长期使用的 JSON 配置文件路径。
+- 支持迁移完整配置与已保存密码到新位置，保留原文件且不覆盖已有文件。
+- 支持切换已有配置，立即加载连接与设置，并记住新路径供下次启动使用。
+- 连接或测试运行中禁止切换；操作失败时保留当前配置。
+
+### English
+
+- View and change the active JSON configuration file path in Settings.
+- Copy the full configuration and saved passwords to a new location, keeping the original without overwriting existing files.
+- Switch to an existing configuration, load its connections and settings immediately, and remember the path for the next launch.
+- Prevent switching during active connections or tests and keep the current configuration if the operation fails.
+
 ## [0.1.2]
 
 ### 中文

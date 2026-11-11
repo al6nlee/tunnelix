@@ -56,6 +56,11 @@ Local destinations are reached from the SSH server; Remote destinations from you
 
 首次启动会要求选择配置文件位置；之后 Tunnelix 会记住该位置。也可以用 `--config <绝对路径>` 启动时显式指定配置文件。用于记住路径的 `.config-location` 只包含文件路径，不包含连接或密码。/ On first launch, choose the configuration file location; Tunnelix remembers it afterwards. You can also pass `--config <absolute-path>` to select a file explicitly. The `.config-location` pointer contains only the path, never connections or passwords.
 
+后期在“设置 → 配置文件”更改：先断开隧道并结束测试，保存或取消尚未保存的设置，再选择以下操作。成功后立即生效并记住新路径；显式 `--config` 启动参数仍优先。/ Change it later in Settings → Configuration file. Disconnect tunnels, finish tests, and save or discard settings edits first. The new path takes effect immediately and is remembered; an explicit `--config` argument still takes precedence.
+
+- **迁移到新位置**：复制完整配置（含已保存密码）并使用新文件，保留原文件，不覆盖已有文件。同一系统账户下加密密码仍可使用。/ **Move to a new location**: copy the full configuration, including saved passwords, and use the new file. Keep the original and refuse to overwrite existing files. Encrypted passwords remain usable under the same system account.
+- **使用已有文件**：加载所选 JSON 的连接与设置，不合并、不立即自动连接。/ **Use an existing file**: load its connections and settings without merging or immediately auto-connecting.
+
 未自定义路径时使用以下默认位置。/ If no custom path is selected, the default locations are:
 
 | 系统 / OS | 路径 / Path |
@@ -68,9 +73,9 @@ Local destinations are reached from the SSH server; Remote destinations from you
 
 Passwords can be session-only, plaintext, or AES-256-GCM encrypted with an OS-stored key. Plaintext passwords are stored in the selected JSON file with the rest of the configuration; encrypted values stay in JSON while the key remains in the OS credential store. Encryption never falls back to plaintext. Leave the password blank to keep it; select “Do not save” and save to remove it. Changing connection identity clears saved credentials. Key passphrases are not persisted.
 
-迁移时使用导出 / 导入，再输入密码；导出不含凭据。复制加密配置文件不会迁移系统密钥。导入合并隧道、关闭导入项的自动连接；ID 重复时整个导入失败。复制隧道也不复制密码和自动连接。
+迁移到另一台设备时使用导出 / 导入，再输入密码；导出不含凭据。复制加密配置文件不会迁移系统密钥。导入合并隧道、关闭导入项的自动连接；ID 重复时整个导入失败，不会切换当前配置路径。复制隧道也不复制密码和自动连接。
 
-To migrate, export/import and re-enter passwords; exports exclude credentials. Copying encrypted configuration does not transfer the OS key. Imports merge tunnels with auto-connect disabled and reject duplicate IDs atomically. Duplicating a tunnel excludes its password and auto-connect setting.
+To migrate to another device, export/import and re-enter passwords; exports exclude credentials. Copying encrypted configuration does not transfer the OS key. Imports merge tunnels with auto-connect disabled and reject duplicate IDs atomically, without changing the active configuration path. Duplicating a tunnel excludes its password and auto-connect setting.
 
 ## 更新与卸载 / Updates and uninstall
 

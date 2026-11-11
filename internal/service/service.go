@@ -18,6 +18,7 @@ import (
 )
 
 type Snapshot struct {
+	ConfigPath   string                      `json:"configPath"`
 	Credentials  map[string]credentials.Info `json:"credentials"`
 	Tests        []tunnel.Status             `json:"tests"`
 	Config       config.Config               `json:"config"`
@@ -27,13 +28,14 @@ type Snapshot struct {
 	SSHPath      string                      `json:"sshPath"`
 }
 type Service struct {
-	mu       sync.Mutex
-	store    *config.Store
-	cfg      config.Config
-	manager  *tunnel.Manager
-	vault    *credentials.Vault
-	revision uint64
-	OnChange func()
+	mu           sync.Mutex
+	store        *config.Store
+	cfg          config.Config
+	manager      *tunnel.Manager
+	vault        *credentials.Vault
+	rememberPath func(string) error
+	revision     uint64
+	OnChange     func()
 }
 
 func New(store *config.Store, manager *tunnel.Manager) (*Service, error) {
@@ -42,7 +44,73 @@ func New(store *config.Store, manager *tunnel.Manager) (*Service, error) {
 		return nil, e
 	}
 	absolute, _ := filepath.Abs(store.Path())
-	return &Service{store: store, cfg: c, manager: manager, vault: credentials.New(absolute)}, nil
+	return &Service{store: store, cfg: c, manager: manager, vault: credentials.New(absolute), rememberPath: config.RememberPath}, nil
+}
+
+// ChangeConfigPath either copies the current configuration to a new file or
+// loads an existing file. The source is kept, and success persists the new path.
+func (s *Service) ChangeConfigPath(path string, migrate bool) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("CONFIG_PATH_REQUIRED")
+	}
+	absolute, e := filepath.Abs(path)
+	if e != nil {
+		return errors.New("INVALID_CONFIG_PATH")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, e := filepath.Abs(s.store.Path())
+	if e != nil {
+		return e
+	}
+	if absolute == current {
+		return nil
+	}
+	// Connect and TestDraft also hold s.mu when starting a session, so neither
+	// can race this check or start with a partially switched configuration.
+	if s.manager.HasActiveSessions() {
+		return errors.New("CONFIG_ACTIVE_CONNECTIONS")
+	}
+	store := config.NewStore(absolute)
+	c := clone(s.cfg)
+	if migrate {
+		if e = store.Create(c); e != nil {
+			if errors.Is(e, os.ErrExist) {
+				return errors.New("CONFIG_PATH_EXISTS")
+			}
+			return errors.New("CONFIG_PATH_WRITE_FAILED")
+		}
+	} else {
+		info, err := os.Stat(absolute)
+		if err != nil {
+			return errors.New("CONFIG_PATH_READ_FAILED")
+		}
+		if !info.Mode().IsRegular() {
+			return errors.New("INVALID_CONFIG_PATH")
+		}
+		if c, e = store.Load(); e != nil {
+			var pathError *os.PathError
+			if errors.As(e, &pathError) {
+				return errors.New("CONFIG_PATH_READ_FAILED")
+			}
+			return e
+		}
+	}
+	if e = s.rememberPath(absolute); e != nil {
+		if migrate {
+			os.Remove(absolute)
+		}
+		return errors.New("CONFIG_PATH_REMEMBER_FAILED")
+	}
+	s.store = store
+	s.cfg = c
+	s.vault = credentials.New(absolute)
+	s.revision++
+	if !migrate {
+		s.manager.ClearHistory()
+	}
+	go s.notify()
+	return nil
 }
 
 // SelectConfigPath switches the active JSON configuration file during the
@@ -99,6 +167,7 @@ func clone(c config.Config) config.Config {
 func (s *Service) Snapshot() Snapshot {
 	s.mu.Lock()
 	c := clone(s.cfg)
+	configPath, _ := filepath.Abs(s.store.Path())
 	infos := map[string]credentials.Info{}
 	for i := range c.Tunnels {
 		if r := c.Tunnels[i].Credential; r != nil {
@@ -117,7 +186,7 @@ func (s *Service) Snapshot() Snapshot {
 		}
 	}
 	path, e := tunnel.Executable(c.Settings.SSHPath)
-	return Snapshot{Credentials: infos, Tests: tests, Config: c, Statuses: normal, Challenges: challenges, SSHAvailable: e == nil, SSHPath: path}
+	return Snapshot{ConfigPath: configPath, Credentials: infos, Tests: tests, Config: c, Statuses: normal, Challenges: challenges, SSHAvailable: e == nil, SSHPath: path}
 }
 func credentialScope(t config.Tunnel) string {
 	b, _ := json.Marshal([]any{t.ID, t.Host, t.Port, t.User, t.Auth, t.Identity, t.Jump})
@@ -146,8 +215,9 @@ func (s *Service) SaveTunnelWithCredential(t config.Tunnel, input credentials.Up
 		}
 	}
 	revision := s.revision
+	vault := s.vault
 	s.mu.Unlock()
-	record, e := s.prepareCredential(t, old, input)
+	record, e := prepareCredential(vault, t, old, input)
 	if e != nil {
 		return e
 	}
@@ -233,13 +303,14 @@ func (s *Service) Connect(id string) (result error) {
 	s.mu.Lock()
 	c := clone(s.cfg)
 	revision := s.revision
+	vault := s.vault
 	s.mu.Unlock()
 	for _, t := range c.Tunnels {
 		if t.ID == id {
 			if s.manager.Active(id) {
 				return nil
 			}
-			secret, e := s.vault.Open(t.Credential, credentialScope(t))
+			secret, e := vault.Open(t.Credential, credentialScope(t))
 			if e != nil {
 				return e
 			}
@@ -410,6 +481,7 @@ func (s *Service) TestDraft(t config.Tunnel, input credentials.Update) (string, 
 	s.mu.Lock()
 	c := clone(s.cfg)
 	revision := s.revision
+	vault := s.vault
 	s.mu.Unlock()
 	if s.manager.Active(t.ID) {
 		return "", errors.New("DISCONNECT_TO_TEST")
@@ -424,7 +496,7 @@ func (s *Service) TestDraft(t config.Tunnel, input credentials.Update) (string, 
 			for _, old := range c.Tunnels {
 				if old.ID == t.ID && credentialScope(old) == credentialScope(t) {
 					var e error
-					secret, e = s.vault.Open(old.Credential, credentialScope(old))
+					secret, e = vault.Open(old.Credential, credentialScope(old))
 					if e != nil {
 						return "", e
 					}
@@ -456,7 +528,7 @@ func (s *Service) ClearTest(id string)  { s.manager.CancelTest(id, true) }
 
 // prepareCredential never accepts credential records supplied by a frontend.
 // Re-encryption and configuration changes are committed together by Store.Save.
-func (s *Service) prepareCredential(t config.Tunnel, old *config.Tunnel, input credentials.Update) (*credentials.Record, error) {
+func prepareCredential(vault *credentials.Vault, t config.Tunnel, old *config.Tunnel, input credentials.Update) (*credentials.Record, error) {
 	switch input.Mode {
 	case "none":
 		return nil, nil
@@ -472,12 +544,12 @@ func (s *Service) prepareCredential(t config.Tunnel, old *config.Tunnel, input c
 		value := input.Value
 		if value == "" && old != nil && credentialScope(*old) == credentialScope(t) && old.Credential != nil {
 			var e error
-			value, e = s.vault.Open(old.Credential, credentialScope(*old))
+			value, e = vault.Open(old.Credential, credentialScope(*old))
 			if e != nil {
 				return nil, e
 			}
 		}
-		return s.vault.Seal(input.Mode, value, credentialScope(t))
+		return vault.Seal(input.Mode, value, credentialScope(t))
 	default:
 		return nil, errors.New("INVALID_CREDENTIAL")
 	}

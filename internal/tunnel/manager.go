@@ -138,6 +138,24 @@ func (m *Manager) Active(id string) bool {
 	_, ok := m.sessions[id]
 	return ok
 }
+
+func (m *Manager) HasActiveSessions() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.sessions) > 0
+}
+
+// ClearHistory removes inactive statuses when the active configuration changes.
+// The service emits the configuration change notification after committing it.
+func (m *Manager) ClearHistory() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id := range m.statuses {
+		if m.sessions[id] == nil {
+			delete(m.statuses, id)
+		}
+	}
+}
 func (m *Manager) Connect(t config.Tunnel, path string) error {
 	return m.ConnectWithSecret(t, path, "")
 }

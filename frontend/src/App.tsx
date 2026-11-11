@@ -31,6 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { UpdatePanel } from "./components/updates";
+import { ConfigLocation } from "./components/config-location";
 import { CredentialFields, PasswordInput } from "./components/credentials";
 import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
@@ -700,7 +701,13 @@ export default function App() {
       )}
       {settings && (
         <SettingsDialog
+          configPath={data.configPath}
           settings={data.config.settings}
+          onConfigChanged={async () => {
+            await refresh();
+            setThemePreview(null);
+            setSettings(false);
+          }}
           onThemePreview={setThemePreview}
           update={update}
           active={
@@ -1308,7 +1315,9 @@ function TunnelEditor({
   );
 }
 function SettingsDialog({
+  configPath,
   settings,
+  onConfigChanged,
   onThemePreview,
   update,
   active,
@@ -1318,7 +1327,9 @@ function SettingsDialog({
   onExport,
   report,
 }: {
+  configPath: string;
   settings: Settings;
+  onConfigChanged: () => Promise<void>;
   onThemePreview: (theme: Settings["theme"]) => void;
   update: UpdateStatus;
   active: boolean;
@@ -1480,6 +1491,14 @@ function SettingsDialog({
               </Button>
             </div>
           </section>
+          <ConfigLocation
+            path={configPath}
+            active={active}
+            dirty={JSON.stringify(draft) !== JSON.stringify(settings)}
+            disabled={saving}
+            onBusy={setSaving}
+            onChanged={onConfigChanged}
+          />
           <UpdatePanel
             status={update}
             active={active}

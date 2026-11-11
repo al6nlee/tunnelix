@@ -165,6 +165,7 @@ func main() {
 	}
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{Title: "Tunnelix", Width: 1060, Height: 720, MinWidth: 900, MinHeight: 600, URL: "/", BackgroundColour: application.NewRGB(246, 248, 252)})
+	desktop.window = window
 	tray := app.SystemTray.New()
 	if runtime.GOOS == "darwin" {
 		tray.SetTemplateIcon(trayIcon)

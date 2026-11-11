@@ -1560,6 +1560,22 @@ button:focus-visible {
 .settings-engine .settings-path {
   margin-top: 0;
 }
+.config-location-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+}
+.config-location-controls input {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+}
+.config-location-controls .button {
+  flex-shrink: 0;
+}
 .settings-backup .backup-actions {
   margin-top: 9px;
 }

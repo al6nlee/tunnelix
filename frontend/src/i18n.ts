@@ -1,7 +1,12 @@
 import { updateEn, updateZh } from "./components/updates";
+import {
+  configLocationEn,
+  configLocationZh,
+} from "./components/config-location";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 const en = {
+  configLocation: configLocationEn,
   settingsIntro: "Make yourself at home.",
   sshAutoDetect: "Find OpenSSH automatically",
   backupTitle: "Configuration backup",
@@ -194,6 +199,18 @@ const en = {
   diagnostics: "Connection events",
   exportDone: "Configuration exported.",
   errors: {
+    CONFIG_PATH_REQUIRED: "Choose a configuration file location.",
+    INVALID_CONFIG_PATH: "Choose a valid JSON configuration file.",
+    CONFIG_PATH_EXISTS:
+      "A file already exists here. Choose a new filename or use the existing-file action.",
+    CONFIG_ACTIVE_CONNECTIONS:
+      "Disconnect all tunnels and finish connection tests before changing the configuration file.",
+    CONFIG_PATH_WRITE_FAILED:
+      "Could not save the configuration. Check the folder permissions and available space.",
+    CONFIG_PATH_READ_FAILED:
+      "Could not read the configuration file. Check that it exists and is readable.",
+    CONFIG_PATH_REMEMBER_FAILED:
+      "Could not remember the new location. The current configuration has not changed.",
     INVALID_CREDENTIAL: "Choose a valid password storage mode.",
     CREDENTIAL_STORE_UNAVAILABLE:
       "The system credential store is unavailable or locked. Unlock it and retry; Linux requires a Secret Service provider such as GNOME Keyring or KeePassXC.",
@@ -262,6 +279,7 @@ const en = {
   },
 };
 const zh: typeof en = {
+  configLocation: configLocationZh,
   settingsIntro: "把 Tunnelix 调整成顺手的样子。",
   sshAutoDetect: "自动查找 OpenSSH",
   backupTitle: "配置备份",
@@ -438,6 +456,14 @@ const zh: typeof en = {
   diagnostics: "连接事件",
   exportDone: "配置已导出。",
   errors: {
+    CONFIG_PATH_REQUIRED: "请选择配置文件位置。",
+    INVALID_CONFIG_PATH: "请选择有效的 JSON 配置文件。",
+    CONFIG_PATH_EXISTS: "此处已有文件，请使用新文件名，或选择“使用已有文件”。",
+    CONFIG_ACTIVE_CONNECTIONS:
+      "更改配置文件前，请先断开所有隧道并结束连接测试。",
+    CONFIG_PATH_WRITE_FAILED: "无法保存配置，请检查目录权限和可用空间。",
+    CONFIG_PATH_READ_FAILED: "无法读取配置文件，请检查文件是否存在且可读。",
+    CONFIG_PATH_REMEMBER_FAILED: "无法记住新路径，当前配置未改变。",
     INVALID_CREDENTIAL: "请选择有效的密码保存方式。",
     CREDENTIAL_STORE_UNAVAILABLE:
       "系统安全存储不可用或已锁定，请解锁后重试。Linux 需要 GNOME Keyring、KeePassXC 等 Secret Service 服务。",

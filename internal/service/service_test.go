@@ -22,6 +22,8 @@ func newService(t *testing.T) *Service {
 	if e != nil {
 		t.Fatal(e)
 	}
+	// Never change the user's remembered configuration from unit tests.
+	s.rememberPath = func(string) error { return nil }
 	return s
 }
 func testTunnel() config.Tunnel {
